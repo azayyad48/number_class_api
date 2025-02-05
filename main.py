@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Query, HTTPException
-import requests
+import requests 
+from typing import Union
 
 app = FastAPI()
 
@@ -15,62 +16,63 @@ def is_prime(n: int) -> bool:
 def is_perfect(n: int) -> bool:
     if n < 2:
         return False
-    return sum(i for i in range(1, n) if n % i == 0) == n
+    return sum(i for i in range(1, n // 2 + 1) if n % i == 0) == n  # Optimized loop
 
 def is_armstrong(n: int) -> bool:
-    digits = [int(d) for d in str(abs(n))]  # Handle negative numbers
+    if n < 0:
+        return False  # Armstrong numbers are non-negative
+    digits = [int(d) for d in str(n)]
     length = len(digits)
-    return sum(d ** length for d in digits) == abs(n)
+    return sum(d ** length for d in digits) == n
 
-def digit_sum(n: int) -> int:
-    return sum(int(d) for d in str(abs(n)))  # Handle negative numbers
+def digit_sum(n: Union[int, float]) -> int:
+    return sum(int(d) for d in str(abs(int(n))))
 
-def get_fun_fact(n: int) -> str:
-    url = f"http://numbersapi.com/{n}/math"
-    response = requests.get(url)
-    return response.text if response.status_code == 200 else "No fun fact available."
+def get_fun_fact(n: Union[int, float]) -> str:
+    try:
+        url = f"http://numbersapi.com/{int(n)}/math"
+        response = requests.get(url, timeout=5)  # Added timeout
+        return response.text if response.status_code == 200 else "No fun fact available."
+    except requests.RequestException:
+        return "Could not fetch fun fact."
 
 # API endpoint
 @app.get("/api/classify-number")
 async def classify_number(number: str = Query(..., description="The number to classify")):
     try:
-        # Check if the input is a valid integer (positive, negative, or zero)
-        num = int(number)
+        num = float(number)
+        is_integer = num.is_integer()
+        num = int(num) if is_integer else num
     except ValueError:
-        # If not, check if it's a floating-point number
-        try:
-            float(number)
-            # If it's a float, return 400 Bad Request
-            raise HTTPException(status_code=400, detail={"number": number, "error": True})
-        except ValueError:
-            # If it's not a number at all, return 400 Bad Request
-            raise HTTPException(status_code=400, detail={"number": number, "error": True})
+        raise HTTPException(status_code=400, detail={"number": number, "error": True})
 
-    # For valid integers, proceed with classification
     properties = []
-    if is_prime(num):
-        properties.append("prime")
-    if is_perfect(num):
-        properties.append("perfect")
-    if is_armstrong(num):
-        properties.append("armstrong")
-    if num % 2 != 0:
-        properties.append("odd")
+    if is_integer:
+        num_int = int(num)
+        prime_status = is_prime(num_int)
+        perfect_status = is_perfect(num_int)
+        armstrong_status = is_armstrong(num_int)
+        properties.extend(filter(None, [
+            "prime" if prime_status else None,
+            "perfect" if perfect_status else None,
+            "armstrong" if armstrong_status else None,
+            "odd" if num_int % 2 != 0 else "even"
+        ]))
     else:
-        properties.append("even")
+        properties.append("floating-point")
 
     fun_fact = get_fun_fact(num)
 
     return {
         "number": num,
-        "is_prime": is_prime(num),
-        "is_perfect": is_perfect(num),
+        "is_prime": prime_status if is_integer else False,
+        "is_perfect": perfect_status if is_integer else False,
         "properties": properties,
         "digit_sum": digit_sum(num),
         "fun_fact": fun_fact
     }
 
 # Run the app
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
