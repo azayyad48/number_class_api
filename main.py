@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Query, HTTPException
-import requests 
+import requests
 from typing import Union
 
 app = FastAPI()
@@ -20,7 +20,7 @@ def is_perfect(n: int) -> bool:
 
 def is_armstrong(n: int) -> bool:
     if n < 0:
-        return False  # Armstrong numbers are non-negative
+        return False  
     digits = [int(d) for d in str(n)]
     length = len(digits)
     return sum(d ** length for d in digits) == n
@@ -28,9 +28,30 @@ def is_armstrong(n: int) -> bool:
 def digit_sum(n: Union[int, float]) -> int:
     return sum(int(d) for d in str(abs(int(n))))
 
-def get_fun_fact(n: Union[int, float]) -> str:
+def get_fun_fact(n: int, properties: list) -> str:
+    """ Generate specific fun facts based on number properties. """
+    if "armstrong" in properties:
+        digits = [int(d) for d in str(n)]
+        length = len(digits)
+        breakdown = " + ".join(f"{d}^{length}" for d in digits)
+        return f"{n} is an Armstrong number because {breakdown} = {n}."
+
+    if "perfect" in properties:
+        divisors = [i for i in range(1, n // 2 + 1) if n % i == 0]
+        return f"{n} is a Perfect number because {n} = {' + '.join(map(str, divisors))}."
+
+    if "prime" in properties:
+        return f"{n} is a Prime number because it has exactly 2 divisors: 1 and {n}."
+
+    if "odd" in properties:
+        return f"{n} is an Odd number because it is not divisible by 2."
+
+    if "even" in properties:
+        return f"{n} is an Even number because it is divisible by 2."
+
+    # Fallback to numbers API
     try:
-        url = f"http://numbersapi.com/{int(n)}/math"
+        url = f"http://numbersapi.com/{n}/math"
         response = requests.get(url, timeout=5)
         return response.text if response.status_code == 200 else "No fun fact available."
     except requests.RequestException:
@@ -47,7 +68,7 @@ async def classify_number(number: str = Query(..., description="The number to cl
         raise HTTPException(
             status_code=400,
             detail={
-                "number": number,  # Keeps the invalid input in the response
+                "number": number,
                 "error": True,
                 "message": f"Invalid input: '{number}' is not a valid number."
             }
@@ -70,7 +91,7 @@ async def classify_number(number: str = Query(..., description="The number to cl
     else:
         properties.append("floating-point")
 
-    fun_fact = get_fun_fact(num)
+    fun_fact = get_fun_fact(num, properties)
 
     return {
         "number": num,
@@ -81,6 +102,7 @@ async def classify_number(number: str = Query(..., description="The number to cl
         "digit_sum": digit_sum(num),
         "fun_fact": fun_fact
     }
+
 
 
 # Run the app
