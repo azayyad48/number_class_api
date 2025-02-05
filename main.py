@@ -16,10 +16,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure SSL context
+
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
-# Utility functions
+
 def is_prime(n: int) -> bool:
     if n < 2:
         return False
@@ -32,40 +32,38 @@ def is_perfect(n: int) -> bool:
     return n > 1 and sum(i for i in range(1, n) if n % i == 0) == n
 
 def is_armstrong(n: int) -> bool:
-    digits = [int(d) for d in str(n)]
-    return sum(d ** len(digits) for d in digits) == n
+    digits = [int(d) for d in str(abs(n))]
+    return sum(d ** len(digits) for d in digits) == abs(n)
 
-def get_digit_sum(n: int) -> int:
-    return sum(int(d) for d in str(n))
+def get_digit_sum(n: float) -> int:
+    return sum(int(d) for d in str(abs(int(n))))
 
-def get_fun_fact(n: int) -> str:
+def get_fun_fact(n: float) -> str:
     try:
-        response = requests.get(f"http://numbersapi.com/{n}/math?json", verify=ssl_context)
+        response = requests.get(f"http://numbersapi.com/{int(n)}/math?json", verify=ssl_context)
         return response.json().get("text", "No fact available")
     except requests.exceptions.RequestException:
         return "Could not fetch fun fact."
 
 @app.get("/api/classify-number")
-def classify_number(number: int = Query(..., description="Number to classify")) -> Dict:
+def classify_number(number: float = Query(..., description="Number to classify")) -> Dict:
     try:
+        if not isinstance(number, (int, float)):
+            raise HTTPException(status_code=400, detail="Invalid input. Must be a number.")
+        
         properties = []
         if is_armstrong(number):
             properties.append("armstrong")
-        properties.append("odd" if number % 2 else "even")
+        properties.append("odd" if int(number) % 2 else "even")
         
         response = {
             "number": number,
-            "is_prime": is_prime(number),
-            "is_perfect": is_perfect(number),
+            "is_prime": is_prime(int(number)),
+            "is_perfect": is_perfect(int(number)),
             "properties": properties,
             "digit_sum": get_digit_sum(number),
             "fun_fact": get_fun_fact(number)
         }
         return response
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# Run the application (for local testing)
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid input. Must be a valid number.")
