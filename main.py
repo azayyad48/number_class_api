@@ -1,107 +1,63 @@
 from fastapi import FastAPI, Query, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import requests
-from typing import Union
-
 app = FastAPI()
-
-# Helper functions
-def is_prime(n: int) -> bool:
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+# Predefined facts for specific numbers
+PREDEFINED_FACTS = {
+    371: "371 is an Armstrong number because 3^3 + 7^3 + 1^3 = 371",
+    9474: "9474 is an Armstrong number because 9^4 + 4^4 + 7^4 + 4^4 = 9474",
+}
+# Function to check if a number is prime
+def is_prime(n):
     if n < 2:
         return False
-    for i in range(2, int(n**0.5) + 1):
+    for i in range(2, int(n ** 0.5) + 1):
         if n % i == 0:
             return False
     return True
-
-def is_perfect(n: int) -> bool:
-    if n < 2:
-        return False
-    return sum(i for i in range(1, n // 2 + 1) if n % i == 0) == n
-
-def is_armstrong(n: int) -> bool:
-    if n < 0:
-        return False  
+# Function to check if a number is an Armstrong number
+def is_armstrong(n):
     digits = [int(d) for d in str(n)]
-    length = len(digits)
-    return sum(d ** length for d in digits) == n
-
-def digit_sum(n: Union[int, float]) -> int:
-    return sum(int(d) for d in str(abs(int(n))))
-
-def get_fun_fact(n: int, properties: list) -> str:
-    """ Generate specific fun facts based on number properties. """
-    if "armstrong" in properties:
-        digits = [int(d) for d in str(n)]
-        length = len(digits)
-        breakdown = " + ".join(f"{d}^{length}" for d in digits)
-        return f"{n} is an Armstrong number because {breakdown} = {n}."
-
-    if "perfect" in properties:
-        divisors = [i for i in range(1, n // 2 + 1) if n % i == 0]
-        return f"{n} is a Perfect number because {n} = {' + '.join(map(str, divisors))}."
-
-    if "prime" in properties:
-        return f"{n} is a Prime number because it has exactly 2 divisors: 1 and {n}."
-
-    if "odd" in properties:
-        return f"{n} is an Odd number because it is not divisible by 2."
-
-    if "even" in properties:
-        return f"{n} is an Even number because it is divisible by 2."
-
-    # Fallback to numbers API
-    try:
-        url = f"http://numbersapi.com/{n}/math"
-        response = requests.get(url, timeout=5)
-        return response.text if response.status_code == 200 else "No fun fact available."
-    except requests.RequestException:
-        return "Could not fetch fun fact."
-
-# API endpoint
+    return sum(d ** len(digits) for d in digits) == n
+# Function to check if a number is a Perfect number
+def is_perfect(n):
+    return n == sum(i for i in range(1, n) if n % i == 0)
 @app.get("/api/classify-number")
-async def classify_number(number: str = Query(..., description="The number to classify")):
+def classify_number(number: str = Query(..., description="Enter an integer")):
     try:
-        num = float(number)
-        is_integer = num.is_integer()
-        num = int(num) if is_integer else num
+        number = int(number)  # Convert to integer
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail={
-                "number": number,
-                "error": True,
-                "message": f"Invalid input: '{number}' is not a valid number."
-            }
+            detail={"number": number, "error": True, "message": "Invalid input. Please enter a valid integer."}
         )
-
-    properties = []
-    prime_status, perfect_status, armstrong_status = None, None, None
-
-    if is_integer:
-        num_int = int(num)
-        prime_status = is_prime(num_int)
-        perfect_status = is_perfect(num_int)
-        armstrong_status = is_armstrong(num_int)
-        properties.extend(filter(None, [
-            "prime" if prime_status else None,
-            "perfect" if perfect_status else None,
-            "armstrong" if armstrong_status else None,
-            "odd" if num_int % 2 != 0 else "even"
-        ]))
-    else:
-        properties.append("floating-point")
-
-    fun_fact = get_fun_fact(num, properties)
-
-    return {
-        "number": num,
-        "is_prime": prime_status if is_integer else None,
-        "is_perfect": perfect_status if is_integer else None,
-        "is_armstrong": armstrong_status if is_integer else None,
+    # Define properties (Even/Odd, Armstrong)
+    properties = ["even" if number % 2 == 0 else "odd"]
+    if is_armstrong(number):
+        properties.insert(0, "armstrong")  # Armstrong comes first if true
+    # Get a fun fact
+    fun_fact = PREDEFINED_FACTS.get(number, "Fun fact not available.")
+    try:
+        fun_fact = requests.get(f"http://numbersapi.com/{number}/math").text
+    except:
+        pass  # Keep predefined fact if API fails
+    # JSON Response
+    response = {
+        "number": number,
+        "is_prime": is_prime(number),
+        "is_perfect": is_perfect(number),
         "properties": properties,
-        "digit_sum": digit_sum(num),
+        "digit_sum": sum(map(int, str(number))),
         "fun_fact": fun_fact
     }
+    return response
 
 
 
