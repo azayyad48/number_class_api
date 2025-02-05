@@ -16,7 +16,7 @@ def is_prime(n: int) -> bool:
 def is_perfect(n: int) -> bool:
     if n < 2:
         return False
-    return sum(i for i in range(1, n // 2 + 1) if n % i == 0) == n  # Optimized loop
+    return sum(i for i in range(1, n // 2 + 1) if n % i == 0) == n
 
 def is_armstrong(n: int) -> bool:
     if n < 0:
@@ -31,7 +31,7 @@ def digit_sum(n: Union[int, float]) -> int:
 def get_fun_fact(n: Union[int, float]) -> str:
     try:
         url = f"http://numbersapi.com/{int(n)}/math"
-        response = requests.get(url, timeout=5)  # Added timeout
+        response = requests.get(url, timeout=5)
         return response.text if response.status_code == 200 else "No fun fact available."
     except requests.RequestException:
         return "Could not fetch fun fact."
@@ -44,7 +44,11 @@ async def classify_number(number: str = Query(..., description="The number to cl
         is_integer = num.is_integer()
         num = int(num) if is_integer else num
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid input: '{number}' is not a number.")
+        return {
+            "number": number,
+            "error": True,
+            "message": f"Invalid input: '{number}' is not a valid number."
+        }
 
     properties = []
     prime_status, perfect_status, armstrong_status = None, None, None
