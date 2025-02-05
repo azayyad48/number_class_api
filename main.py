@@ -46,7 +46,11 @@ async def classify_number(number: str = Query(..., description="The number to cl
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail={"number": number, "error": True, "message": f"Invalid input: '{number}' is not a valid number."}
+            detail={
+                "number": number,  # Keeps the invalid input in the response
+                "error": True,
+                "message": f"Invalid input: '{number}' is not a valid number."
+            }
         )
 
     properties = []
