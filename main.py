@@ -44,9 +44,11 @@ async def classify_number(number: str = Query(..., description="The number to cl
         is_integer = num.is_integer()
         num = int(num) if is_integer else num
     except ValueError:
-        raise HTTPException(status_code=400, detail={"number": number, "error": True})
+        raise HTTPException(status_code=400, detail=f"Invalid input: '{number}' is not a number.")
 
     properties = []
+    prime_status, perfect_status, armstrong_status = None, None, None
+
     if is_integer:
         num_int = int(num)
         prime_status = is_prime(num_int)
@@ -65,14 +67,16 @@ async def classify_number(number: str = Query(..., description="The number to cl
 
     return {
         "number": num,
-        "is_prime": prime_status if is_integer else False,
-        "is_perfect": perfect_status if is_integer else False,
+        "is_prime": prime_status if is_integer else None,
+        "is_perfect": perfect_status if is_integer else None,
+        "is_armstrong": armstrong_status if is_integer else None,
         "properties": properties,
         "digit_sum": digit_sum(num),
         "fun_fact": fun_fact
     }
 
+
 # Run the app
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run(app, host="0.0.0.0", port=8000)
+if __name__ == "__main__":
+     import uvicorn
+     uvicorn.run(app, host="127.0.0.1", port=8000)
