@@ -70,7 +70,7 @@ async def classify_number(number: str = Query(..., description="The number to cl
             detail={
                 "number": number,
                 "error": True,
-                "message": f"Invalid input. Please enter a valid integer."
+                "message": "Invalid number format"
             }
         )
 
